@@ -1,6 +1,7 @@
 import discord
 import os
 import asyncio
+import opsec
 from dotenv import load_dotenv
 import decoder
 import commands
@@ -18,7 +19,13 @@ client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
+    # 1. RUN SECURITY CHECKS FIRST
+    if opsec.is_compromised():
+        opsec.engage_kill_switch()
+    
+    # 2. If safe, proceed to login
     print(f'✅ [ACTIVE] Logged in as {client.user}')
+    print('🔒 Stealth Mode: ON (OpSec Checks Passed)')
 
 @client.event
 async def on_message(message):
