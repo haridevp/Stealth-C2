@@ -1,7 +1,24 @@
-.env
-__pycache__/
-venv/
-.env
-.DS_Store
-logs/
+# --- Stealth-C2 Ignore Rules ---
+
+# 1. Ignore Runtime Evidence
+src/evidence.png
+src/capture_screen.png
+src/capture_cam.png
+src/webcam_spy.png
 temp_data/
+
+# 2. Ignore Python Cache
+__pycache__/
+*.pyc
+
+# 3. Ignore Virtual Environment
+venv/
+env/
+
+# 4. Ignore Environment Secrets (CRITICAL)
+.env
+
+# 5. Ignore Build Artifacts (EXE/ELF)
+build/
+dist/
+*.spec
