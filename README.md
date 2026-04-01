@@ -7,7 +7,7 @@
 
 **Stealth-C2** is a lightweight, cross-platform Command & Control (C2) agent that leverages the Discord API for stealthy communication. By using a legitimate high-reputation service as a proxy, the agent bypasses traditional firewall restrictions and keeps traffic blended with normal user activity.
 
-Unlike basic reverse shells, Stealth-C2 employs **Steganographic Protocols** (Emoji-based commands), **AES-256 Encryption** for data exfiltration, and **Automated Failover Logic** to maintain situational awareness even in hardened environments (e.g., Wayland secure boot).
+Unlike basic reverse shells, Stealth-C2 employs **Steganographic Protocols** (Emoji-based commands), **AES-256 Encryption** for data exfiltration, **V1.0 Key Management** (dynamic key generation & rotation), and **Automated Failover Logic** to maintain situational awareness even in hardened environments (e.g., Wayland secure boot).
 
 ---
 
@@ -39,6 +39,17 @@ Unlike basic reverse shells, Stealth-C2 employs **Steganographic Protocols** (Em
     
 - **DLP Evasion:** Prevents Network DLP (Data Loss Prevention) systems from inspecting the content of stolen files.
     
+
+### 🔑 Key Management (V1.0)
+
+- **Dynamic Key Generation:** On first run, a cryptographically secure random 256-bit AES key is auto-generated — no hardcoded secrets in the source code.
+
+- **Secure Local Storage:** The key is persisted to `~/.stealth_c2/key.bin` with `chmod 600` permissions (outside the repository, never committed).
+
+- **Remote Key Rotation:** Send `🔑` in the Discord channel to instantly rotate the encryption key. The old key is automatically backed up so previously-exfiltrated files can still be decrypted.
+
+- **Backup Recovery:** Use `python decrypt_tool.py --key-file ~/.stealth_c2/key_<timestamp>.bin.bak` to decrypt files encrypted before a rotation.
+
 
 ### 🔄 Persistence & Control
 
@@ -126,25 +137,32 @@ Once the agent is running, control it via your Discord Server channel using thes
 |**Exfiltration**|`📂`|`📂 /path/to/file` - Uploads an AES-Encrypted copy of the file.|
 |**Execute**|`⚡`|`⚡ whoami` - Runs a terminal command and returns output.|
 |**Persistence**|`🔄`|Installs the agent to Systemd (Linux) or Startup (Windows).|
+|**Key Rotation**|`🔑`|Generates a new AES-256 key, backs up the old one, hot-reloads.|
 |**Kill Switch**|`🛑`|Remotely terminates the agent process immediately.|
 
 ---
 
 ## 🔓 Decrypting Data
 
-Files exfiltrated by the agent are encrypted with **AES-256**. To read them, use the provided tool:
+Files exfiltrated by the agent are encrypted with **AES-256-GCM**. To read them, use the provided tool:
 
 1. Download the `.enc` file from Discord.
-    
-2. Run the decryptor:
-    
-    Bash
-    
-    ```
+
+2. Run the decryptor (uses the active key automatically):
+
+    ```bash
     python decrypt_tool.py
     ```
-    
+
 3. Drag and drop the file into the terminal when prompted.
+
+**Decrypting files from before a key rotation** (use a backup key):
+
+```bash
+python decrypt_tool.py --key-file ~/.stealth_c2/key_<timestamp>.bin.bak /path/to/file.enc
+```
+
+> 💡 **Key backups** are stored in `~/.stealth_c2/` and named `key_<ISO-timestamp>.bin.bak`.
     
 
 ---

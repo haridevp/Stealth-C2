@@ -22,3 +22,8 @@ env/
 build/
 dist/
 *.spec
+
+# 6. Ignore Key Files (V1.0 Key Management) — NEVER commit keys
+*.bin
+*.bin.bak
+.stealth_c2/

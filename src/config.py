@@ -1,11 +1,13 @@
 import os
+import key_manager
 
-# --- AES ENCRYPTION KEY ---
-# Must be exactly 32 bytes for AES-256
-AES_KEY = b'this_is_a_secret_32_byte_key_!!!' 
+# --- AES ENCRYPTION KEY (V1.0 Key Management) ---
+# Loaded from ~/.stealth_c2/key.bin at startup.
+# Auto-generates a secure random 32-byte key on first run.
+# Use key_manager.rotate_key() or the 🔑 Discord command to rotate.
+AES_KEY = key_manager.load_key()
 
 # --- PATHS ---
-# This is the line that was missing or named incorrectly
 TEMP_DIR = os.path.join(os.getcwd(), "temp_data")
 
 # Create the temp folder immediately if it doesn't exist
